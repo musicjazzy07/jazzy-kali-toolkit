@@ -1,20 +1,23 @@
 #!/usr/bin/env python3
 """
-Jazzy Kali Toolkit — existing Kali tools ke liye GUI frontend.
-Nmap, WiFi audit (aircrack-ng suite), aur Metasploit ko button-click pe chalao.
+Jazzy Kali Toolkit v2.0 — Kali tools ke liye universal GUI frontend.
+Saare tool definitions tools.json me hain — naya tool = JSON me entry.
 
 Usage: sudo python3 jazzy_kali_toolkit.py
-(Monitor mode aur kuch scans ke liye root chahiye)
-
 Sirf apne lab / apne network pe use karo.
 """
 
+import json
+import os
+import re
+import shlex
+import shutil
 import subprocess
 import threading
 import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox
-import shutil
-import re
+
+BASE = os.path.dirname(os.path.abspath(__file__))
 
 # ---------- Theme ----------
 BG = "#0d1117"
@@ -28,55 +31,223 @@ FONT = ("Consolas", 10)
 FONT_BIG = ("Consolas", 11, "bold")
 
 
-def tool_exists(name):
-    return shutil.which(name) is not None
+def load_tools():
+    with open(os.path.join(BASE, "tools.json"), encoding="utf-8") as f:
+        data = json.load(f)
+    return data["tools"]
 
 
-class ToolTab(ttk.Frame):
-    """Har tab ka base: output window + run/stop."""
-
-    def __init__(self, parent):
-        super().__init__(parent)
+class App(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title("Jazzy Kali Toolkit v2.0")
+        self.geometry("1000x680")
+        self.configure(bg=BG)
+        self.tools = load_tools()
         self.proc = None
-        self._build_output()
+        self.field_widgets = {}
+        self.current_tool = None
 
-    def _build_output(self):
-        out_frame = ttk.Frame(self)
-        out_frame.pack(fill="both", expand=True, padx=8, pady=8)
+        self._style()
+        self._header()
+        self._body()
+        self._output()
+        self._populate_tree()
+        # Pehla tool select karo
+        first = self.tree.get_children()[0]
+        self.tree.selection_set(self.tree.get_children(first)[0])
+        self.on_select(None)
 
-        btn_row = ttk.Frame(out_frame)
-        btn_row.pack(fill="x", pady=(0, 4))
+    # ---------- UI setup ----------
+    def _style(self):
+        s = ttk.Style()
+        s.theme_use("clam")
+        s.configure("TFrame", background=BG)
+        s.configure("TLabel", background=BG, foreground=TEXT, font=FONT)
+        s.configure("Treeview", background=PANEL, foreground=TEXT,
+                    fieldbackground=PANEL, font=FONT, rowheight=24)
+        s.configure("Treeview.Heading", background=BG, foreground=GREEN)
+        s.map("Treeview", background=[("selected", GREEN)],
+              foreground=[("selected", "black")])
+        s.configure("TCombobox", fieldbackground=PANEL, background=PANEL,
+                    foreground=TEXT)
+
+    def _header(self):
+        tk.Label(self, text="⚡ JAZZY KALI TOOLKIT",
+                 bg=BG, fg=GREEN, font=("Consolas", 14, "bold")).pack(pady=(8, 0))
+        tk.Label(self, text=f"{len(self.tools)} tools • apne lab pe hi use karo 🔒",
+                 bg=BG, fg=DIM, font=("Consolas", 9)).pack(pady=(0, 6))
+        search_row = tk.Frame(self, bg=BG)
+        search_row.pack(fill="x", padx=10, pady=(0, 4))
+        tk.Label(search_row, text="🔍", bg=BG, fg=GREEN, font=FONT).pack(side="left")
+        self.search_var = tk.StringVar()
+        self.search_var.trace_add("write", lambda *a: self._populate_tree())
+        tk.Entry(search_row, textvariable=self.search_var, bg=PANEL, fg=TEXT,
+                 font=FONT, insertbackground=GREEN).pack(side="left", fill="x",
+                                                        expand=True, padx=6)
+
+    def _body(self):
+        mid = tk.Frame(self, bg=BG)
+        mid.pack(fill="both", expand=True, padx=10)
+
+        # Left: tool tree
+        left = tk.Frame(mid, bg=BG, width=230)
+        left.pack(side="left", fill="y", padx=(0, 8))
+        left.pack_propagate(False)
+        self.tree = ttk.Treeview(left, show="tree")
+        self.tree.pack(fill="both", expand=True)
+        self.tree.bind("<<TreeviewSelect>>", self.on_select)
+
+        # Right: dynamic form
+        right = tk.Frame(mid, bg=PANEL, relief="flat")
+        right.pack(side="left", fill="both", expand=True)
+        self.form_title = tk.Label(right, text="", bg=PANEL, fg=GREEN,
+                                   font=("Consolas", 12, "bold"))
+        self.form_title.pack(pady=(10, 2), padx=12, anchor="w")
+        self.form_warn = tk.Label(right, text="", bg=PANEL, fg=AMBER,
+                                  font=("Consolas", 9))
+        self.form_warn.pack(padx=12, anchor="w")
+        self.form_frame = tk.Frame(right, bg=PANEL)
+        self.form_frame.pack(fill="x", padx=12, pady=8)
+
+        btn_row = tk.Frame(right, bg=PANEL)
+        btn_row.pack(fill="x", padx=12, pady=(0, 10))
         self.run_btn = tk.Button(btn_row, text="▶ Run", bg=GREEN, fg="black",
-                                 font=FONT_BIG, relief="flat", padx=12,
+                                 font=FONT_BIG, relief="flat", padx=16,
                                  command=self.on_run)
         self.run_btn.pack(side="left")
         self.stop_btn = tk.Button(btn_row, text="■ Stop", bg=RED, fg="white",
-                                  font=FONT_BIG, relief="flat", padx=12,
+                                  font=FONT_BIG, relief="flat", padx=16,
                                   command=self.stop, state="disabled")
         self.stop_btn.pack(side="left", padx=8)
-        self.clear_btn = tk.Button(btn_row, text="Clear", bg=PANEL, fg=TEXT,
-                                   font=FONT, relief="flat",
-                                   command=self.clear_output)
-        self.clear_btn.pack(side="left")
 
+    def _output(self):
+        out_label = tk.Label(self, text="OUTPUT", bg=BG, fg=DIM,
+                             font=("Consolas", 9, "bold"))
+        out_label.pack(anchor="w", padx=12)
         self.output = scrolledtext.ScrolledText(
-            out_frame, bg="black", fg=GREEN, font=FONT,
+            self, bg="black", fg=GREEN, font=FONT, height=12,
             insertbackground=GREEN, wrap="word")
-        self.output.pack(fill="both", expand=True)
+        self.output.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
+    # ---------- Tool list ----------
+    def _populate_tree(self):
+        q = self.search_var.get().lower()
+        self.tree.delete(*self.tree.get_children())
+        cats = {}
+        for t in self.tools:
+            if q and q not in t["name"].lower() and q not in t["category"].lower():
+                continue
+            cat = t["category"]
+            if cat not in cats:
+                cats[cat] = self.tree.insert("", "end", text=cat, open=True)
+            self.tree.insert(cats[cat], "end", text=t["name"],
+                             values=(t["name"],))
+
+    def _find_tool(self, name):
+        for t in self.tools:
+            if t["name"] == name:
+                return t
+        return None
+
+    def on_select(self, event):
+        sel = self.tree.selection()
+        if not sel:
+            return
+        vals = self.tree.item(sel[0], "values")
+        if not vals:
+            return  # category header
+        tool = self._find_tool(vals[0])
+        if not tool:
+            return
+        self.current_tool = tool
+        self._build_form(tool)
+
+    # ---------- Dynamic form ----------
+    def _build_form(self, tool):
+        for w in self.form_frame.winfo_children():
+            w.destroy()
+        self.field_widgets = {}
+
+        installed = shutil.which(tool.get("check", "")) is not None
+        status = "✅ installed" if installed else "❌ nahi mila"
+        self.form_title.config(
+            text=f"{tool['name']}  [{status}]")
+        if tool.get("lab_only"):
+            self.form_warn.config(
+                text="⚠️ Sirf apne lab / apne network pe chalao!")
+        else:
+            self.form_warn.config(text="")
+
+        for f in tool.get("fields", []):
+            row = tk.Frame(self.form_frame, bg=PANEL)
+            row.pack(fill="x", pady=3)
+            tk.Label(row, text=f["label"] + ":", bg=PANEL, fg=TEXT,
+                     font=FONT, width=20, anchor="w").pack(side="left")
+            key = f["key"]
+            ftype = f.get("type", "text")
+            if ftype == "choice":
+                var = tk.StringVar(value=f.get("default", ""))
+                labels = f.get("choice_labels", f["choices"])
+                cmap = dict(zip(labels, f["choices"]))
+                combo = ttk.Combobox(row, textvariable=var, values=labels,
+                                     width=30, state="readonly")
+                combo.pack(side="left", fill="x", expand=True)
+                # display label -> actual value
+                self.field_widgets[key] = (var, cmap)
+            elif ftype == "check":
+                var = tk.BooleanVar(value=f.get("default", False))
+                tk.Checkbutton(row, variable=var, bg=PANEL,
+                               activebackground=PANEL).pack(side="left")
+                self.field_widgets[key] = (var, f.get("flag", ""))
+            else:
+                var = tk.StringVar(value=f.get("default", ""))
+                tk.Entry(row, textvariable=var, bg=BG, fg=TEXT, font=FONT,
+                         insertbackground=GREEN).pack(side="left", fill="x",
+                                                      expand=True)
+                self.field_widgets[key] = (var, None)
+
+    def _collect_values(self, tool):
+        vals = {}
+        for f in tool.get("fields", []):
+            key = f["key"]
+            ftype = f.get("type", "text")
+            var, extra = self.field_widgets.get(key, (None, None))
+            if var is None:
+                vals[key] = ""
+            elif ftype == "choice":
+                vals[key] = extra.get(var.get(), var.get())
+            elif ftype == "check":
+                vals[key] = extra if var.get() else ""
+            else:
+                vals[key] = var.get()
+        return vals
+
+    # ---------- Run ----------
     def log(self, text):
         self.output.insert("end", text)
         self.output.see("end")
 
-    def clear_output(self):
-        self.output.delete("1.0", "end")
-
     def on_run(self):
-        cmd = self.build_command()
+        tool = self.current_tool
+        if not tool:
+            return
+        vals = self._collect_values(tool)
+        cmd = []
+        for part in tool["command"]:
+            # {key} placeholders bharo
+            def repl(m):
+                return vals.get(m.group(1), "")
+            filled = re.sub(r"\{(\w+)\}", repl, part)
+            if filled.strip():
+                cmd.append(filled)
         if not cmd:
             return
-        self.clear_output()
-        self.log(f"$ {' '.join(cmd)}\n{'-'*50}\n")
+        # msfconsole -x wala case: last arg me spaces hain — split mat karo
+        if tool.get("check") == "msfconsole":
+            pass  # already list form me sahi hai
+        self.output.delete("1.0", "end")
+        self.log(f"$ {' '.join(cmd)}\n{'-'*60}\n")
         self.run_btn.config(state="disabled")
         self.stop_btn.config(state="normal")
         threading.Thread(target=self._run, args=(cmd,), daemon=True).start()
@@ -89,9 +260,9 @@ class ToolTab(ttk.Frame):
             for line in self.proc.stdout:
                 self.log(line)
             self.proc.wait()
-            self.log(f"\n{'-'*50}\n[Done, exit={self.proc.returncode}]\n")
+            self.log(f"\n{'-'*60}\n[Done, exit={self.proc.returncode}]\n")
         except FileNotFoundError:
-            self.log(f"\n[ERROR] Tool nahi mila: {cmd[0]} — Kali me installed hai?\n")
+            self.log(f"\n[ERROR] Tool nahi mila: {cmd[0]}\n")
         except Exception as e:
             self.log(f"\n[ERROR] {e}\n")
         finally:
@@ -107,179 +278,9 @@ class ToolTab(ttk.Frame):
             self.proc.terminate()
             self.log("\n[Stopped by user]\n")
 
-    def build_command(self):
-        raise NotImplementedError
-
-
-# ================= NMAP TAB =================
-class NmapTab(ToolTab):
-    def __init__(self, parent):
-        self.target_var = tk.StringVar(value="192.168.1.1")
-        self.profile_var = tk.StringVar(value="Quick scan")
-        super().__init__(parent)
-        if not tool_exists("nmap"):
-            self.log("[WARNING] nmap nahi mila!\n")
-
-    def _build_output(self):
-        # Input row pehle, phir base ka output
-        inp = ttk.Frame(self)
-        inp.pack(fill="x", padx=8, pady=(8, 0))
-
-        tk.Label(inp, text="Target:", bg=BG, fg=TEXT, font=FONT).pack(side="left")
-        tk.Entry(inp, textvariable=self.target_var, bg=PANEL, fg=TEXT,
-                 font=FONT, width=22, insertbackground=GREEN).pack(side="left", padx=6)
-
-        tk.Label(inp, text="Scan:", bg=BG, fg=TEXT, font=FONT).pack(side="left")
-        profiles = ["Quick scan", "Full ports", "OS detect",
-                    "Service versions", "Aggressive", "Ping only"]
-        ttk.Combobox(inp, textvariable=self.profile_var, values=profiles,
-                     width=16, state="readonly").pack(side="left", padx=6)
-
-        super()._build_output()
-
-    def build_command(self):
-        target = self.target_var.get().strip()
-        if not target:
-            messagebox.showwarning("Target?", "Target IP/hostname daalo pehle!")
-            return None
-        p = self.profile_var.get()
-        base = ["nmap"]
-        if p == "Quick scan":
-            base += ["-F", target]
-        elif p == "Full ports":
-            base += ["-p-", target]
-        elif p == "OS detect":
-            base += ["-O", target]
-        elif p == "Service versions":
-            base += ["-sV", target]
-        elif p == "Aggressive":
-            base += ["-A", target]
-        elif p == "Ping only":
-            base += ["-sn", target]
-        return base
-
-
-# ================= WIFI TAB =================
-class WifiTab(ToolTab):
-    def __init__(self, parent):
-        self.iface_var = tk.StringVar()
-        self.mode_var = tk.StringVar(value="Scan networks")
-        super().__init__(parent)
-        for t in ("airmon-ng", "airodump-ng"):
-            if not tool_exists(t):
-                self.log(f"[WARNING] {t} nahi mila! (apt install aircrack-ng)\n")
-        self.after(500, self.refresh_ifaces)
-
-    def _build_output(self):
-        inp = ttk.Frame(self)
-        inp.pack(fill="x", padx=8, pady=(8, 0))
-
-        tk.Label(inp, text="Interface:", bg=BG, fg=TEXT, font=FONT).pack(side="left")
-        self.iface_combo = ttk.Combobox(inp, textvariable=self.iface_var,
-                                        width=12, state="readonly")
-        self.iface_combo.pack(side="left", padx=6)
-        tk.Button(inp, text="↻", bg=PANEL, fg=GREEN, font=FONT,
-                  relief="flat", command=self.refresh_ifaces).pack(side="left")
-
-        tk.Label(inp, text="Kaam:", bg=BG, fg=TEXT, font=FONT).pack(side="left", padx=(10, 0))
-        modes = ["Scan networks", "Monitor mode ON", "Monitor mode OFF"]
-        ttk.Combobox(inp, textvariable=self.mode_var, values=modes,
-                     width=16, state="readonly").pack(side="left", padx=6)
-
-        super()._build_output()
-
-    def refresh_ifaces(self):
-        try:
-            out = subprocess.run(["iw", "dev"], capture_output=True,
-                                 text=True, timeout=5).stdout
-            ifaces = re.findall(r"Interface (\w+)", out)
-            self.iface_combo["values"] = ifaces
-            if ifaces and not self.iface_var.get():
-                self.iface_var.set(ifaces[0])
-        except Exception:
-            pass
-
-    def build_command(self):
-        iface = self.iface_var.get().strip()
-        if not iface:
-            messagebox.showwarning("Interface?", "Pehle interface select karo!")
-            return None
-        m = self.mode_var.get()
-        if m == "Scan networks":
-            mon = iface if "mon" in iface else iface
-            return ["airodump-ng", mon]
-        elif m == "Monitor mode ON":
-            return ["airmon-ng", "start", iface]
-        else:
-            return ["airmon-ng", "stop", iface]
-
-
-# ================= METASPLOIT TAB =================
-class MsfTab(ToolTab):
-    def __init__(self, parent):
-        self.cmd_var = tk.StringVar(value="search type:exploit platform:linux")
-        super().__init__(parent)
-        if not tool_exists("msfconsole"):
-            self.log("[WARNING] msfconsole nahi mila!\n")
-        self.log("Tip: neeche msfconsole command likho, Run dabao.\n"
-                 "Examples:\n"
-                 "  search type:auxiliary name:scanner/smb\n"
-                 "  use auxiliary/scanner/portscan/tcp\n\n")
-
-    def _build_output(self):
-        inp = ttk.Frame(self)
-        inp.pack(fill="x", padx=8, pady=(8, 0))
-        tk.Label(inp, text="msf>", bg=BG, fg=GREEN, font=FONT_BIG).pack(side="left")
-        tk.Entry(inp, textvariable=self.cmd_var, bg=PANEL, fg=TEXT,
-                 font=FONT, insertbackground=GREEN).pack(
-                     side="left", fill="x", expand=True, padx=6)
-        super()._build_output()
-
-    def build_command(self):
-        cmd = self.cmd_var.get().strip()
-        if not cmd:
-            return None
-        # Har command ko msfconsole -q -x me chalao
-        return ["msfconsole", "-q", "-x", f"{cmd}; exit"]
-
-
-# ================= MAIN APP =================
-class KaliToolkit(tk.Tk):
-    def __init__(self):
-        super().__init__()
-        self.title("Jazzy Kali Toolkit")
-        self.geometry("900x600")
-        self.configure(bg=BG)
-
-        style = ttk.Style()
-        style.theme_use("clam")
-        style.configure("TFrame", background=BG)
-        style.configure("TNotebook", background=BG, borderwidth=0)
-        style.configure("TNotebook.Tab", background=PANEL, foreground=TEXT,
-                        font=FONT, padding=(14, 6))
-        style.map("TNotebook.Tab", background=[("selected", GREEN)],
-                  foreground=[("selected", "black")])
-        style.configure("TCombobox", fieldbackground=PANEL, background=PANEL,
-                        foreground=TEXT)
-
-        header = tk.Label(self, text="⚡ JAZZY KALI TOOLKIT",
-                          bg=BG, fg=GREEN, font=("Consolas", 14, "bold"))
-        header.pack(pady=(10, 4))
-        sub = tk.Label(self, text="Apne lab pe hi use karo 🔒",
-                       bg=BG, fg=DIM, font=("Consolas", 9))
-        sub.pack(pady=(0, 6))
-
-        nb = ttk.Notebook(self)
-        nb.pack(fill="both", expand=True, padx=10, pady=(0, 10))
-        nb.add(NmapTab(nb), text="  Nmap Scan  ")
-        nb.add(WifiTab(nb), text="  WiFi Audit  ")
-        nb.add(MsfTab(nb), text="  Metasploit  ")
-
 
 if __name__ == "__main__":
     import os
     if os.geteuid() != 0:
-        print("[!] Root chahiye kuch features ke liye — sudo se chalao:")
-        print("    sudo python3 jazzy_kali_toolkit.py")
-    app = KaliToolkit()
-    app.mainloop()
+        print("[!] Kuch features ke liye root chahiye — sudo se chalao.")
+    App().mainloop()

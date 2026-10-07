@@ -1,0 +1,881 @@
+{
+  "_note": "Har tool: name, category, check (binary), fields[], command[] (+lab_only warning). Field types: text | choice | check",
+  "tools": [
+    {
+      "category": "Information Gathering",
+      "check": "nmap",
+      "command": [
+        "nmap",
+        "{profile}",
+        "{target}"
+      ],
+      "fields": [
+        {
+          "default": "192.168.1.1",
+          "key": "target",
+          "label": "Target IP/host",
+          "type": "text"
+        },
+        {
+          "choice_labels": [
+            "Quick (top ports)",
+            "Full (all ports)",
+            "Service versions",
+            "OS detect",
+            "Aggressive",
+            "Ping only"
+          ],
+          "choices": [
+            "-F",
+            "-p-",
+            "-sV",
+            "-O",
+            "-A",
+            "-sn"
+          ],
+          "default": "-F",
+          "key": "profile",
+          "label": "Scan type",
+          "type": "choice"
+        }
+      ],
+      "name": "Nmap"
+    },
+    {
+      "category": "Information Gathering",
+      "check": "theharvester",
+      "command": [
+        "theharvester",
+        "-d",
+        "{domain}",
+        "-b",
+        "{source}",
+        "-l",
+        "{limit}"
+      ],
+      "fields": [
+        {
+          "default": "example.com",
+          "key": "domain",
+          "label": "Domain",
+          "type": "text"
+        },
+        {
+          "choices": [
+            "google",
+            "bing",
+            "duckduckgo",
+            "all"
+          ],
+          "default": "google",
+          "key": "source",
+          "label": "Source",
+          "type": "choice"
+        },
+        {
+          "default": "100",
+          "key": "limit",
+          "label": "Limit",
+          "type": "text"
+        }
+      ],
+      "name": "theHarvester"
+    },
+    {
+      "category": "Information Gathering",
+      "check": "dnsenum",
+      "command": [
+        "dnsenum",
+        "{domain}"
+      ],
+      "fields": [
+        {
+          "default": "example.com",
+          "key": "domain",
+          "label": "Domain",
+          "type": "text"
+        }
+      ],
+      "name": "dnsenum"
+    },
+    {
+      "category": "Information Gathering",
+      "check": "whois",
+      "command": [
+        "whois",
+        "{domain}"
+      ],
+      "fields": [
+        {
+          "default": "example.com",
+          "key": "domain",
+          "label": "Domain / IP",
+          "type": "text"
+        }
+      ],
+      "name": "whois"
+    },
+    {
+      "category": "Information Gathering",
+      "check": "whatweb",
+      "command": [
+        "whatweb",
+        "{url}"
+      ],
+      "fields": [
+        {
+          "default": "http://192.168.1.1",
+          "key": "url",
+          "label": "URL",
+          "type": "text"
+        }
+      ],
+      "name": "whatweb"
+    },
+    {
+      "category": "Vulnerability Analysis",
+      "check": "nikto",
+      "command": [
+        "nikto",
+        "-h",
+        "{target}",
+        "{tuning}"
+      ],
+      "fields": [
+        {
+          "default": "192.168.1.1",
+          "key": "target",
+          "label": "Target host",
+          "type": "text"
+        },
+        {
+          "choice_labels": [
+            "Default",
+            "Fast (reverse)",
+            "Full"
+          ],
+          "choices": [
+            "",
+            "-Tuning x",
+            "-Tuning 1234567890abc"
+          ],
+          "default": "",
+          "key": "tuning",
+          "label": "Tuning",
+          "type": "choice"
+        }
+      ],
+      "name": "Nikto"
+    },
+    {
+      "category": "Web Application",
+      "check": "gobuster",
+      "command": [
+        "gobuster",
+        "dir",
+        "-u",
+        "{url}",
+        "-w",
+        "{wordlist}"
+      ],
+      "fields": [
+        {
+          "default": "http://192.168.1.1",
+          "key": "url",
+          "label": "Target URL",
+          "type": "text"
+        },
+        {
+          "default": "/usr/share/wordlists/dirb/common.txt",
+          "key": "wordlist",
+          "label": "Wordlist",
+          "type": "text"
+        },
+        {
+          "default": "",
+          "key": "ext",
+          "label": "Extensions (php,html)",
+          "type": "text"
+        }
+      ],
+      "name": "Gobuster"
+    },
+    {
+      "category": "Web Application",
+      "check": "dirb",
+      "command": [
+        "dirb",
+        "{url}",
+        "{wordlist}"
+      ],
+      "fields": [
+        {
+          "default": "http://192.168.1.1",
+          "key": "url",
+          "label": "Target URL",
+          "type": "text"
+        },
+        {
+          "default": "",
+          "key": "wordlist",
+          "label": "Wordlist (khali = default)",
+          "type": "text"
+        }
+      ],
+      "name": "Dirb"
+    },
+    {
+      "category": "Web Application",
+      "check": "sqlmap",
+      "command": [
+        "sqlmap",
+        "-u",
+        "{url}",
+        "{batch}",
+        "--crawl={crawl}"
+      ],
+      "fields": [
+        {
+          "default": "http://192.168.1.1/page.php?id=1",
+          "key": "url",
+          "label": "Target URL",
+          "type": "text"
+        },
+        {
+          "default": true,
+          "flag": "--batch",
+          "key": "batch",
+          "label": "Auto-yes (--batch)",
+          "type": "check"
+        },
+        {
+          "default": "2",
+          "key": "crawl",
+          "label": "Crawl depth",
+          "type": "text"
+        }
+      ],
+      "lab_only": true,
+      "name": "SQLmap"
+    },
+    {
+      "category": "Web Application",
+      "check": "wpscan",
+      "command": [
+        "wpscan",
+        "--url",
+        "{url}"
+      ],
+      "fields": [
+        {
+          "default": "http://192.168.1.1",
+          "key": "url",
+          "label": "WordPress URL",
+          "type": "text"
+        }
+      ],
+      "name": "WPScan"
+    },
+    {
+      "category": "Password Attacks",
+      "check": "hydra",
+      "command": [
+        "hydra",
+        "-l",
+        "{user}",
+        "-P",
+        "{wordlist}",
+        "{target}",
+        "{service}"
+      ],
+      "fields": [
+        {
+          "default": "192.168.1.1",
+          "key": "target",
+          "label": "Target IP",
+          "type": "text"
+        },
+        {
+          "choices": [
+            "ssh",
+            "ftp",
+            "telnet",
+            "http-post-form"
+          ],
+          "default": "ssh",
+          "key": "service",
+          "label": "Service",
+          "type": "choice"
+        },
+        {
+          "default": "root",
+          "key": "user",
+          "label": "Username (-l)",
+          "type": "text"
+        },
+        {
+          "default": "/usr/share/wordlists/rockyou.txt",
+          "key": "wordlist",
+          "label": "Password list (-P)",
+          "type": "text"
+        }
+      ],
+      "lab_only": true,
+      "name": "Hydra"
+    },
+    {
+      "category": "Password Attacks",
+      "check": "john",
+      "command": [
+        "john",
+        "--wordlist={wordlist}",
+        "{hashfile}"
+      ],
+      "fields": [
+        {
+          "default": "/root/hashes.txt",
+          "key": "hashfile",
+          "label": "Hash file",
+          "type": "text"
+        },
+        {
+          "default": "/usr/share/wordlists/rockyou.txt",
+          "key": "wordlist",
+          "label": "Wordlist",
+          "type": "text"
+        }
+      ],
+      "name": "John the Ripper"
+    },
+    {
+      "category": "Password Attacks",
+      "check": "hashcat",
+      "command": [
+        "hashcat",
+        "-m",
+        "{hashtype}",
+        "{hashfile}",
+        "{wordlist}"
+      ],
+      "fields": [
+        {
+          "choice_labels": [
+            "MD5 (0)",
+            "NTLM (1000)",
+            "SHA-512 crypt (1800)",
+            "bcrypt (3200)"
+          ],
+          "choices": [
+            "0",
+            "1000",
+            "1800",
+            "3200"
+          ],
+          "default": "0",
+          "key": "hashtype",
+          "label": "Hash type (-m)",
+          "type": "choice"
+        },
+        {
+          "default": "/root/hashes.txt",
+          "key": "hashfile",
+          "label": "Hash file",
+          "type": "text"
+        },
+        {
+          "default": "/usr/share/wordlists/rockyou.txt",
+          "key": "wordlist",
+          "label": "Wordlist",
+          "type": "text"
+        }
+      ],
+      "name": "Hashcat"
+    },
+    {
+      "category": "Password Attacks",
+      "check": "crunch",
+      "command": [
+        "crunch",
+        "{min}",
+        "{max}",
+        "{charset}",
+        "-o",
+        "{output}"
+      ],
+      "fields": [
+        {
+          "default": "4",
+          "key": "min",
+          "label": "Min length",
+          "type": "text"
+        },
+        {
+          "default": "6",
+          "key": "max",
+          "label": "Max length",
+          "type": "text"
+        },
+        {
+          "default": "abc123",
+          "key": "charset",
+          "label": "Charset",
+          "type": "text"
+        },
+        {
+          "default": "/root/wordlist.txt",
+          "key": "output",
+          "label": "Output file",
+          "type": "text"
+        }
+      ],
+      "name": "Crunch"
+    },
+    {
+      "category": "Wireless",
+      "check": "airmon-ng",
+      "command": [
+        "airmon-ng",
+        "{action}",
+        "{iface}"
+      ],
+      "fields": [
+        {
+          "default": "wlan0",
+          "key": "iface",
+          "label": "Interface",
+          "type": "text"
+        },
+        {
+          "choices": [
+            "start",
+            "stop",
+            "check"
+          ],
+          "default": "start",
+          "key": "action",
+          "label": "Action",
+          "type": "choice"
+        }
+      ],
+      "name": "airmon-ng"
+    },
+    {
+      "category": "Wireless",
+      "check": "airodump-ng",
+      "command": [
+        "airodump-ng",
+        "{band}",
+        "{iface}"
+      ],
+      "fields": [
+        {
+          "default": "wlan0mon",
+          "key": "iface",
+          "label": "Monitor interface",
+          "type": "text"
+        },
+        {
+          "choice_labels": [
+            "2.4 GHz",
+            "2.4 + 5 GHz"
+          ],
+          "choices": [
+            "",
+            "--band abg"
+          ],
+          "default": "",
+          "key": "band",
+          "label": "Band",
+          "type": "choice"
+        }
+      ],
+      "name": "airodump-ng"
+    },
+    {
+      "category": "Wireless",
+      "check": "aireplay-ng",
+      "command": [
+        "aireplay-ng",
+        "--deauth",
+        "{count}",
+        "-a",
+        "{bssid}",
+        "{iface}"
+      ],
+      "fields": [
+        {
+          "default": "AA:BB:CC:DD:EE:FF",
+          "key": "bssid",
+          "label": "AP BSSID (-a)",
+          "type": "text"
+        },
+        {
+          "default": "10",
+          "key": "count",
+          "label": "Deauth count",
+          "type": "text"
+        },
+        {
+          "default": "wlan0mon",
+          "key": "iface",
+          "label": "Monitor interface",
+          "type": "text"
+        }
+      ],
+      "lab_only": true,
+      "name": "aireplay-ng (deauth)"
+    },
+    {
+      "category": "Wireless",
+      "check": "aircrack-ng",
+      "command": [
+        "aircrack-ng",
+        "-w",
+        "{wordlist}",
+        "{capfile}"
+      ],
+      "fields": [
+        {
+          "default": "/root/handshake.cap",
+          "key": "capfile",
+          "label": ".cap file",
+          "type": "text"
+        },
+        {
+          "default": "/usr/share/wordlists/rockyou.txt",
+          "key": "wordlist",
+          "label": "Wordlist (-w)",
+          "type": "text"
+        }
+      ],
+      "name": "aircrack-ng"
+    },
+    {
+      "category": "Exploitation",
+      "check": "msfconsole",
+      "command": [
+        "msfconsole",
+        "-q",
+        "-x",
+        "{msfcmd}; exit"
+      ],
+      "fields": [
+        {
+          "default": "search type:exploit platform:linux",
+          "key": "msfcmd",
+          "label": "msfconsole command",
+          "type": "text"
+        }
+      ],
+      "name": "Metasploit"
+    },
+    {
+      "category": "Exploitation",
+      "check": "searchsploit",
+      "command": [
+        "searchsploit",
+        "{query}"
+      ],
+      "fields": [
+        {
+          "default": "apache 2.4",
+          "key": "query",
+          "label": "Search karo",
+          "type": "text"
+        }
+      ],
+      "name": "searchsploit"
+    },
+    {
+      "category": "Exploitation",
+      "check": "msfvenom",
+      "command": [
+        "msfvenom",
+        "-p",
+        "{payload}",
+        "LHOST={lhost}",
+        "LPORT={lport}",
+        "-f",
+        "{format}",
+        "-o",
+        "{output}"
+      ],
+      "fields": [
+        {
+          "choices": [
+            "linux/x64/meterpreter/reverse_tcp",
+            "windows/meterpreter/reverse_tcp",
+            "php/meterpreter_reverse_tcp"
+          ],
+          "default": "linux/x64/meterpreter/reverse_tcp",
+          "key": "payload",
+          "label": "Payload",
+          "type": "choice"
+        },
+        {
+          "default": "192.168.1.5",
+          "key": "lhost",
+          "label": "LHOST",
+          "type": "text"
+        },
+        {
+          "default": "4444",
+          "key": "lport",
+          "label": "LPORT",
+          "type": "text"
+        },
+        {
+          "choices": [
+            "elf",
+            "exe",
+            "php",
+            "py"
+          ],
+          "default": "elf",
+          "key": "format",
+          "label": "Format (-f)",
+          "type": "choice"
+        },
+        {
+          "default": "/root/payload.elf",
+          "key": "output",
+          "label": "Output file",
+          "type": "text"
+        }
+      ],
+      "lab_only": true,
+      "name": "msfvenom"
+    },
+    {
+      "category": "Sniffing",
+      "check": "tcpdump",
+      "command": [
+        "tcpdump",
+        "-i",
+        "{iface}",
+        "-c",
+        "{count}",
+        "{filter}"
+      ],
+      "fields": [
+        {
+          "default": "eth0",
+          "key": "iface",
+          "label": "Interface (-i)",
+          "type": "text"
+        },
+        {
+          "default": "50",
+          "key": "count",
+          "label": "Packet count (-c)",
+          "type": "text"
+        },
+        {
+          "default": "",
+          "key": "filter",
+          "label": "Filter (khali = sab)",
+          "type": "text"
+        }
+      ],
+      "name": "tcpdump"
+    },
+    {
+      "category": "Sniffing",
+      "check": "tshark",
+      "command": [
+        "tshark",
+        "-i",
+        "{iface}",
+        "-c",
+        "{count}"
+      ],
+      "fields": [
+        {
+          "default": "eth0",
+          "key": "iface",
+          "label": "Interface (-i)",
+          "type": "text"
+        },
+        {
+          "default": "50",
+          "key": "count",
+          "label": "Packet count (-c)",
+          "type": "text"
+        }
+      ],
+      "name": "tshark"
+    },
+    {
+      "category": "Sniffing",
+      "check": "arpspoof",
+      "command": [
+        "arpspoof",
+        "-i",
+        "{iface}",
+        "-t",
+        "{target}",
+        "{gateway}"
+      ],
+      "fields": [
+        {
+          "default": "eth0",
+          "key": "iface",
+          "label": "Interface (-i)",
+          "type": "text"
+        },
+        {
+          "default": "192.168.1.10",
+          "key": "target",
+          "label": "Target IP (-t)",
+          "type": "text"
+        },
+        {
+          "default": "192.168.1.1",
+          "key": "gateway",
+          "label": "Gateway",
+          "type": "text"
+        }
+      ],
+      "lab_only": true,
+      "name": "arpspoof"
+    },
+    {
+      "category": "Stress Testing",
+      "check": "hping3",
+      "command": [
+        "hping3",
+        "{mode}",
+        "-p",
+        "{port}",
+        "-c",
+        "{count}",
+        "{target}"
+      ],
+      "fields": [
+        {
+          "default": "192.168.1.1",
+          "key": "target",
+          "label": "Target",
+          "type": "text"
+        },
+        {
+          "choice_labels": [
+            "SYN scan (-S)",
+            "Flood (--flood)",
+            "ICMP (-1)"
+          ],
+          "choices": [
+            "-S",
+            "--flood",
+            "-1"
+          ],
+          "default": "-S",
+          "key": "mode",
+          "label": "Mode",
+          "type": "choice"
+        },
+        {
+          "default": "80",
+          "key": "port",
+          "label": "Port (-p)",
+          "type": "text"
+        },
+        {
+          "default": "10",
+          "key": "count",
+          "label": "Count (-c)",
+          "type": "text"
+        }
+      ],
+      "lab_only": true,
+      "name": "hping3"
+    },
+    {
+      "category": "Post Exploitation",
+      "check": "nc",
+      "command": [
+        "nc",
+        "-lvnp",
+        "{port}"
+      ],
+      "fields": [
+        {
+          "default": "4444",
+          "key": "port",
+          "label": "Port (-p)",
+          "type": "text"
+        }
+      ],
+      "lab_only": true,
+      "name": "Netcat listener"
+    },
+    {
+      "category": "Forensics",
+      "check": "binwalk",
+      "command": [
+        "binwalk",
+        "{extract}",
+        "{file}"
+      ],
+      "fields": [
+        {
+          "default": "/root/firmware.bin",
+          "key": "file",
+          "label": "File",
+          "type": "text"
+        },
+        {
+          "default": false,
+          "flag": "-e",
+          "key": "extract",
+          "label": "Extract (-e)",
+          "type": "check"
+        }
+      ],
+      "name": "binwalk"
+    },
+    {
+      "category": "Forensics",
+      "check": "foremost",
+      "command": [
+        "foremost",
+        "-i",
+        "{file}",
+        "-o",
+        "{output}"
+      ],
+      "fields": [
+        {
+          "default": "/root/disk.img",
+          "key": "file",
+          "label": "Input file (-i)",
+          "type": "text"
+        },
+        {
+          "default": "/root/foremost_out",
+          "key": "output",
+          "label": "Output dir (-o)",
+          "type": "text"
+        }
+      ],
+      "name": "foremost"
+    },
+    {
+      "category": "Forensics",
+      "check": "exiftool",
+      "command": [
+        "exiftool",
+        "{file}"
+      ],
+      "fields": [
+        {
+          "default": "/root/photo.jpg",
+          "key": "file",
+          "label": "File",
+          "type": "text"
+        }
+      ],
+      "name": "exiftool"
+    }
+  ]
+}
